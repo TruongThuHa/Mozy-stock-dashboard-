@@ -1,0 +1,8 @@
+{
+  "tickers": ["DGC", "MSN", "SCS"],
+  "intradayIntervalMs": 300000,
+  "eodCronExpr": "0 16 * * 1-5",
+  "eodTimezone": "Asia/Saigon",
+  "port": 7878,
+  "host": "0.0.0.0"
+}
