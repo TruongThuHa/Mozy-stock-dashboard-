@@ -1,0 +1,20 @@
+{
+  "name": "mozy-stock-dashboard",
+  "version": "1.0.0",
+  "description": "Live local dashboard for VN stock watchlist using Mozyfin data + Mozy AI for EOD decisions",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "pipeline": "node pipeline.mjs",
+    "pipeline:intraday": "node pipeline.mjs intraday",
+    "pipeline:eod": "node pipeline.mjs eod",
+    "pipeline:all": "node pipeline.mjs all"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "express": "^4.21.0"
+  },
+  "keywords": ["stock", "dashboard", "vietnam", "mozyfin", "trading"],
+  "license": "MIT"
+}
