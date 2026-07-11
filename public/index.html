@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stock Dashboard · DGC · MSN · SCS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#0F172A; --ink2:#1E293B; --muted:#64748B;
+    --bg:#F1F5F9; --card:#FFFFFF; --line:#E2E8F0;
+    --pos:#16A34A; --neg:#DC2626; --neu:#94A3B8;
+    --accent:#2563EB; --accent2:#0EA5E9; --warn:#F59E0B;
+    --buy-bg:#DCFCE7; --buy-fg:#166534;
+    --sell-bg:#FEE2E2; --sell-fg:#B91C1C;
+    --watch-bg:#FEF3C7; --watch-fg:#92400E;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:linear-gradient(135deg,#0F172A 0%,#1E293B 100%);color:#fff;position:sticky;top:0;z-index:10}
+  .nav .brand{font-weight:800;letter-spacing:-.2px;font-size:18px}
+  .nav .meta{font-size:12px;color:#cbd5e1;margin-top:2px}
+  .nav .btns button{background:#2563EB;border:0;color:#fff;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;margin-left:6px}
+  .nav .btns button.alt{background:#475569}
+  .nav .btns button:disabled{opacity:.5;cursor:not-allowed}
+
+  /* TABS */
+  .tabs{display:flex;gap:0;background:var(--card);border-bottom:2px solid var(--line);padding:0 24px;position:sticky;top:57px;z-index:9}
+  .tab-btn{padding:12px 20px;background:transparent;border:0;border-bottom:3px solid transparent;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;transition:.15s;font-family:inherit}
+  .tab-btn:hover{color:var(--ink)}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+  /* SOCIAL POSTS */
+  .social-panel{display:none}
+  .social-panel.show{display:block}
+  .social-search{display:flex;gap:10px;margin-bottom:18px;align-items:center}
+  .social-search input{flex:1;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;outline:none;transition:.15s}
+  .social-search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .social-search button{padding:10px 18px;background:var(--accent);border:0;color:#fff;font-weight:600;border-radius:10px;cursor:pointer;font-size:13px;font-family:inherit}
+  .social-search button:disabled{opacity:.5;cursor:not-allowed}
+  .social-search .clear-btn{background:transparent;color:var(--muted);font-size:13px;padding:8px 12px}
+  .social-search .badge{font-size:12px;color:var(--muted);white-space:nowrap}
+  .post-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:10px;transition:.12s}
+  .post-card:hover{border-color:var(--accent2);box-shadow:0 2px 8px rgba(15,23,42,.06)}
+  .post-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px;color:var(--muted)}
+  .post-meta .sender{font-weight:700;color:var(--ink);font-size:13px}
+  .post-meta .time{font-size:11px}
+  .post-headline{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:8px;line-height:1.4}
+  .post-summary{font-size:13.5px;color:var(--ink2);line-height:1.6;white-space:pre-line}
+  .post-summary.collapsed{max-height:120px;overflow:hidden;position:relative}
+  .post-summary.collapsed::after{content:'';position:absolute;bottom:0;left:0;right:0;height:50px;background:linear-gradient(transparent, var(--card))}
+  .post-expand{font-size:12px;color:var(--accent);cursor:pointer;font-weight:600;margin-top:6px;display:inline-block}
+  .overview-panel.show{display:block}
+  .overview-panel{display:none}
+
+  /* AI SUMMARY */
+  .ai-summary{background:linear-gradient(135deg,#EFF6FF 0%,#F0F9FF 100%);border:1px solid #BFDBFE;border-radius:14px;padding:20px 22px;margin-bottom:18px;box-shadow:0 2px 8px rgba(37,99,235,.08)}
+  .ai-summary-label{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:12px;letter-spacing:.5px}
+  .ai-summary-body{font-size:14px;color:var(--ink2);line-height:1.7}
+  .ai-summary-body b{color:var(--ink)}
+  .ai-summary-body table.social-table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  .ai-summary-body table.social-table th{background:#DBEAFE;color:var(--ink);font-weight:700;padding:8px 10px;text-align:left;font-size:12px;letter-spacing:.5px}
+  .ai-summary-body table.social-table td{padding:8px 10px;border-bottom:1px solid #BFDBFE;vertical-align:top}
+  .ai-summary.overall{background:linear-gradient(135deg,#F0FDF4 0%,#ECFEFF 100%);border-color:#A7F3D0}
+  .ai-summary.overall .ai-summary-label{color:#059669}
+  .ai-summary.overall .ai-summary-body table.social-table th{background:#D1FAE5}
+
+  /* MARKET ASSESSMENT HERO */
+  .market-assessment{background:linear-gradient(135deg,#0F172A 0%,#1E293B 100%);border:0;border-radius:16px;padding:24px 28px;margin-bottom:20px;color:#F1F5F9;box-shadow:0 4px 16px rgba(15,23,42,.2)}
+  .market-assessment .ma-label{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#64748B;font-weight:700;margin-bottom:6px}
+  .market-assessment .ma-title{font-size:20px;font-weight:800;color:#fff;margin-bottom:16px;letter-spacing:-.3px}
+  .market-assessment .ma-body{font-size:14px;color:#CBD5E1;line-height:1.8}
+  .market-assessment .ma-body b{color:#fff}
+  .market-assessment .ma-body table.social-table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+  .market-assessment .ma-body table.social-table th{background:#334155;color:#E2E8F0;font-weight:700;padding:8px 10px;text-align:left;font-size:12px;letter-spacing:.5px}
+  .market-assessment .ma-body table.social-table td{padding:8px 10px;border-bottom:1px solid #334155;vertical-align:top;color:#CBD5E1}
+  .market-assessment .ma-body table.social-table td b{color:#F1F5F9}
+  .market-assessment .ma-summary{margin-top:14px;padding:12px 16px;background:rgba(37,99,235,.15);border-radius:10px;font-weight:600;color:#93C5FD;font-size:14px;border-left:3px solid #3B82F6}
+  .section-divider{display:flex;align-items:center;margin:20px 0 12px;color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.5px}
+  .section-divider::after{content:'';flex:1;height:1px;background:var(--line);margin-left:10px}
+
+  /* TICKER CARDS */
+  .ticker-summaries{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .ticker-card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;transition:.12s}
+  .ticker-card:hover{border-color:var(--accent2)}
+  .ticker-header{cursor:pointer;padding:10px 14px;background:#F8FAFC;font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center;user-select:none}
+  .ticker-header .toggle-icon{font-size:10px;color:var(--muted)}
+  .ticker-body{padding:12px 14px;font-size:13px;color:var(--ink2);line-height:1.6}
+  .ticker-body b{color:var(--ink)}
+  .ticker-body table.social-table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px}
+  .ticker-body table.social-table th{background:#F1F5F9;color:var(--ink);font-weight:700;padding:6px 8px;text-align:left;font-size:11px}
+  .ticker-body table.social-table td{padding:6px 8px;border-bottom:1px solid var(--line)}
+
+  @media (max-width:900px){.ticker-summaries{grid-template-columns:1fr}}
+  .container{padding:20px 24px;max-width:1280px;margin:0 auto}
+  h2{margin:0;font-size:20px;font-weight:700;letter-spacing:-.2px}
+  h3{font-size:15px;font-weight:700;color:var(--ink);margin:0 0 10px}
+  h4{font-size:13px;font-weight:700;color:var(--ink2);margin:14px 0 8px;letter-spacing:.2px}
+
+  /* MARKET REVIEW PANEL */
+  .review{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:18px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .review .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .review .head .title{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);font-weight:700}
+  .review .head .ts{font-size:12px;color:var(--muted)}
+  .review .headline{font-size:16px;font-weight:700;margin-bottom:12px;color:var(--ink)}
+  .review-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+  .idx-card{background:#F8FAFC;border:1px solid var(--line);border-radius:10px;padding:12px}
+  .idx-card .n{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+  .idx-card .v{font-size:20px;font-weight:800;margin-top:2px}
+  .idx-card .c{font-size:13px;font-weight:600;margin-top:2px}
+  .breadth{display:flex;gap:18px;font-size:13px;color:var(--ink2);margin-bottom:10px;flex-wrap:wrap}
+  .breadth b{color:var(--ink)}
+  .review-list{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .review-list .col h4{margin-top:0}
+  .review-list ul{margin:0;padding-left:16px;font-size:13.5px}
+  .review-list li{padding:3px 0}
+  .outlook{margin-top:10px;padding:10px 12px;background:#F8FAFC;border-radius:10px;font-size:13.5px;color:var(--ink2);border-left:3px solid var(--accent)}
+
+  /* SUMMARY STRIP */
+  .summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;font-size:13px;color:var(--muted)}
+  .chip{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-weight:600}
+  .chip b{color:var(--ink)}
+  .chip-buy{background:var(--buy-bg);color:var(--buy-fg);border-color:transparent}
+  .chip-sell{background:var(--sell-bg);color:var(--sell-fg);border-color:transparent}
+  .chip-watch{background:var(--watch-bg);color:var(--watch-fg);border-color:transparent}
+
+  /* TICKER GRID */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:0 1px 2px rgba(15,23,42,.04);cursor:pointer;transition:.15s}
+  .card:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(15,23,42,.08)}
+  .card .row{display:flex;justify-content:space-between;align-items:flex-start}
+  .card h2{font-size:22px}
+  .card .sub{color:var(--muted);font-size:12px;margin-top:2px}
+  .card .price{font-size:30px;font-weight:800;letter-spacing:-.5px;margin-top:10px}
+  .card .chg{font-size:14px;font-weight:700;margin-top:2px}
+  .pos{color:var(--pos)}.neg{color:var(--neg)}.neu{color:var(--muted)}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-top:8px}
+  .pill-buy{background:var(--buy-bg);color:var(--buy-fg)}
+  .pill-watch{background:var(--watch-bg);color:var(--watch-fg)}
+  .pill-sell{background:var(--sell-bg);color:var(--sell-fg)}
+  .pill-na{background:#E2E8F0;color:#475569}
+  .score-bar{margin-top:10px;height:6px;border-radius:999px;background:#E2E8F0;overflow:hidden}
+  .score-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--neg) 0%,var(--warn) 50%,var(--pos) 100%)}
+  .meta-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px;color:var(--muted)}
+  .one{margin-top:10px;font-size:13.5px;color:var(--ink2);min-height:38px}
+
+  /* DETAIL PANEL */
+  .panel{margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;display:none}
+  .panel-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:14px}
+  .panel-head h2{font-size:24px}
+  .panel-head .sub{color:var(--muted);font-size:13.5px;margin-top:4px}
+  .closex{background:transparent;border:0;color:var(--muted);font-size:20px;cursor:pointer}
+  .topline{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+  .ksum{background:#F8FAFC;border:1px solid var(--line);border-radius:10px;padding:12px}
+  .ksum .l{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .ksum .v{font-size:18px;font-weight:800;margin-top:2px}
+
+  .panel-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+  .lab{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:8px}
+  .chart-wrap{height:280px}
+  .data-tbl{font-size:13px}
+  .data-tbl .r{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line)}
+  .data-tbl .r:last-child{border-bottom:0}
+  .data-tbl .r b{color:var(--ink)}
+
+  .blocks{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  .blk{background:#F8FAFC;border:1px solid var(--line);border-radius:12px;padding:14px}
+  .blk ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink2)}
+  .blk li{padding:3px 0}
+  .blk .neg-li{color:#B91C1C}
+  .blk .pos-li{color:#166534}
+
+  .battle{margin-top:14px;background:#F8FAFC;border:1px solid var(--line);border-radius:12px;padding:14px}
+  .battle .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .bp{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px}
+  .bp .l{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:1px;text-transform:uppercase}
+  .bp .v{font-size:14.5px;font-weight:700;margin-top:4px}
+  .checklist{margin-top:10px;font-size:13.5px}
+  .checklist div{padding:4px 0;border-bottom:1px dashed var(--line)}
+  .checklist div:last-child{border-bottom:0}
+
+  .news-list{display:grid;gap:8px}
+  .news-item{background:#fff;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:13px}
+  .news-item b{display:block;color:var(--ink);font-size:13.5px}
+  .news-item span{color:var(--muted);font-size:11.5px}
+
+  .empty{padding:30px;text-align:center;color:var(--muted)}
+  .card-error{background:#FEF2F2;border:2px solid #FCA5A5;cursor:default}.card-error:hover{transform:none;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+  .err-msg{margin-top:12px;font-size:14px;line-height:1.6}
+
+  @media (max-width:900px){.review-grid,.topline{grid-template-columns:repeat(2,1fr)}.panel-grid,.review-list,.battle .grid4,.blocks{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div>
+    <div class="brand">📈 Stock Dashboard</div>
+    <div class="meta" id="pipelineMeta">Đang tải…</div>
+  </div>
+  <div class="btns">
+    <button id="refreshIntra">Refresh intraday</button>
+    <button id="refreshEod" class="alt">Run EOD + AI</button>
+  </div>
+</div>
+
+<!-- TAB NAVIGATION -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="overview">📊 Tổng quan</button>
+  <button class="tab-btn" data-tab="social">💬 Social Posts</button>
+</div>
+
+<div class="container">
+  <!-- OVERVIEW PANEL -->
+  <div id="overviewPanel" class="overview-panel show">
+    <div id="review" class="review" style="display:none"></div>
+    <div id="summary" class="summary"></div>
+    <div id="cards" class="grid"></div>
+    <div id="detail" class="panel"></div>
+  </div>
+
+  <!-- SOCIAL POSTS PANEL -->
+  <div id="socialPanel" class="social-panel">
+    <div class="social-search">
+      <input type="text" id="socialSearchInput" placeholder="Tìm mã CK hoặc tên công ty… VD: HPG, Hòa Phát, VCB…" />
+      <button id="socialSearchBtn">🔍 Tìm</button>
+      <button id="socialClearBtn" class="clear-btn" style="display:none">✕ Xóa</button>
+      <button id="socialRefreshBtn" class="clear-btn" title="Clear cache & lấy data mới">🔄 Làm mới</button>
+      <span class="badge" id="socialBadge"></span>
+    </div>
+    <div id="socialPosts"></div>
+  </div>
+</div>
+
+<script>
+const fmtPct = (n) => (n == null) ? '—' : `${n >= 0 ? '+' : ''}${Number(n).toFixed(2)}%`;
+const fmtNum = (n) => (n == null) ? '—' : Number(n).toLocaleString('vi-VN');
+const fmtTs  = (ts) => ts ? new Date(ts).toLocaleString('vi-VN', { hour12: false }) : '—';
+const fmt2   = (n) => (n == null) ? '—' : Number(n).toFixed(2);
+
+function pickRow(node) { return node?.rows?.[0] || null; }
+function lastRow(node) { const r = node?.rows; return r?.length ? r[0] : null; }
+function rowsOf(node) { return node?.rows || []; }
+function pickPrice(quote, taLatest, ohlcvRow) {
+  return ohlcvRow?.close ?? quote?.close ?? quote?.price ?? quote?.last ?? quote?.match_price ?? taLatest?.close ?? null;
+}
+function pickPctChange(quote, ohlcvRows) {
+  if (ohlcvRows?.length >= 2) {
+    const pc = ohlcvRows[0].close;
+    const pp = ohlcvRows[1].close;
+    if (pc != null && pp != null && pp !== 0) return ((pc - pp) / pp) * 100;
+  }
+  if (!quote) return null;
+  const v = quote.percent_change ?? quote.pct_change ?? quote.change_pct ?? quote.pct;
+  if (v != null) return Number(v);
+  if (quote.change != null && quote.reference != null) return (quote.change / quote.reference) * 100;
+  return null;
+}
+function pickVolume(quote, ohlcvRow){return ohlcvRow?.volume ?? quote?.total_volume ?? quote?.volume ?? quote?.deal_volume ?? null}
+function pickValue(quote){return quote?.total_value ?? quote?.value ?? null}
+
+function ratingPill(advice, dt) {
+  const norm = (advice || '').toLowerCase();
+  let cls = 'pill-na', label = (advice || dt || 'N/A').toString().toUpperCase();
+  if (/mua|buy|tích lũy|accumulate/i.test(advice || '') || dt === 'buy') cls = 'pill-buy';
+  else if (/bán|sell|giảm tỷ trọng/i.test(advice || '') || dt === 'sell') cls = 'pill-sell';
+  else if (/giữ|hold|quan sát|watch/i.test(advice || '') || dt === 'hold') cls = 'pill-watch';
+  return `<span class="pill ${cls}">${label}</span>`;
+}
+
+function decisionCount(decisions) {
+  let buy = 0, watch = 0, sell = 0;
+  for (const d of decisions) {
+    const a = (d?.operation_advice || '').toLowerCase();
+    const dt = d?.decision_type;
+    if (/mua|buy|tích/.test(a) || dt === 'buy') buy++;
+    else if (/bán|sell|giảm/.test(a) || dt === 'sell') sell++;
+    else watch++;
+  }
+  return { buy, watch, sell };
+}
+
+async function loadOverview() {
+  const r = await fetch('/api/overview');
+  const data = await r.json();
+
+  const meta = document.getElementById('pipelineMeta');
+  meta.textContent = `Intraday: ${fmtTs(data.pipeline?.last_intraday?.started_at)} · EOD: ${fmtTs(data.pipeline?.last_eod?.started_at)}`;
+
+  // Market Review
+  renderReview(data.market_review);
+
+  // Summary chips
+  const decisions = data.tickers.map(t => t.decision).filter(d => d && !d.error);
+  const c = decisionCount(decisions);
+  const sum = document.getElementById('summary');
+  sum.innerHTML = `
+    <div class="chip">Watchlist <b>${data.tickers.length}</b></div>
+    <div class="chip chip-buy">🟢 Mua <b>${c.buy}</b></div>
+    <div class="chip chip-watch">🟡 Quan sát <b>${c.watch}</b></div>
+    <div class="chip chip-sell">🔴 Bán <b>${c.sell}</b></div>
+    <div class="chip">Decisions <b>${decisions.length}/${data.tickers.length}</b></div>
+  `;
+
+  // Cards
+  const grid = document.getElementById('cards');
+  grid.innerHTML = '';
+  for (const t of data.tickers) {
+    const pStatus = t.pipeline_status;
+    const isError = pStatus && !pStatus.ok;
+
+    if (isError) {
+      // Error card — show API failure prominently
+      const errCard = document.createElement('div');
+      errCard.className = 'card card-error';
+      const errMsgs = (pStatus.errors || []).map(e => `<li>${e}</li>`).join('');
+      errCard.innerHTML = `
+        <div class="row">
+          <h2>⚠️ ${t.ticker}</h2>
+        </div>
+        <div class="err-msg">
+          <div style="font-weight:700;margin-bottom:6px;color:#DC2626">Mozy API không phản hồi — dữ liệu không khả dụng</div>
+          <ul style="margin:0;padding-left:16px;font-size:12px;color:#64748B">${errMsgs}</ul>
+        </div>
+        <div class="meta-row" style="margin-top:12px">
+          <span style="color:#DC2626">🛑 Lần chạy cuối: ${pStatus.mode || '?'} · ${fmtTs(pStatus.ts)}</span>
+        </div>
+      `;
+      grid.appendChild(errCard);
+      continue;
+    }
+
+    const q = pickRow(t.quote);
+    const ta = pickRow(t.ta_latest);
+    const ohlcvRows = rowsOf(t.intraday_ohlcv);
+    const ohlcvLast = lastRow(t.intraday_ohlcv);
+    const dec = (t.decision && !t.decision.error) ? t.decision : null;
+    const price = pickPrice(q, ta, ohlcvLast);
+    const pct = pickPctChange(q, ohlcvRows);
+    const cls = pct == null ? 'neu' : (pct >= 0 ? 'pos' : 'neg');
+    const score = dec?.sentiment_score;
+    const one = dec?.dashboard?.core_conclusion?.one_sentence || dec?.analysis_summary || '';
+    const sig = dec?.dashboard?.core_conclusion?.signal_type || '';
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="row">
+        <div>
+          <h2>${t.ticker}</h2>
+          <div class="sub">${dec?.stock_name || ''}</div>
+        </div>
+        ${ratingPill(dec?.operation_advice, dec?.decision_type)}
+      </div>
+      <div class="price">${fmtNum(price)}</div>
+      <div class="chg ${cls}">${pct == null ? '' : fmtPct(pct)}</div>
+      <div class="score-bar"><i style="width:${score == null ? 0 : score}%"></i></div>
+      <div class="meta-row">
+        <span>${score != null ? `Score ${score}/100` : 'Chưa có Decision'}</span>
+        <span>${sig}</span>
+      </div>
+      <div class="one">${one}</div>
+      <div class="meta-row">
+        <span>KL: ${fmtNum(pickVolume(q, ohlcvLast))} · GT: ${pickValue(q) != null ? (pickValue(q)/1e9).toFixed(1) + ' tỷ' : '—'}</span>
+        <span>${fmtTs(t.last_quote_ts)}</span>
+      </div>
+    `;
+    card.onclick = () => loadDetail(t.ticker);
+    grid.appendChild(card);
+  }
+}
+
+function renderReview(mr) {
+  const el = document.getElementById('review');
+  if (!mr) { el.style.display = 'none'; return; }
+  const r = mr.data;
+  if (!r || r.error) {
+    el.style.display = '';
+    el.innerHTML = `<div class="head"><span class="title">📋 Watchlist Review</span><span class="ts">${fmtTs(mr.ts)}</span></div><div class="empty">Chưa có review (lỗi: ${r?.error || 'N/A'})</div>`;
+    return;
+  }
+  const isNew = Array.isArray(r.watchlist);
+  const sentIcon = { 'tích cực': '🟢', 'tiêu cực': '🔴', 'trung lập': '🟡' };
+  el.style.display = '';
+
+  if (isNew) {
+    // NEW schema: per-stock watchlist
+    const stocks = r.watchlist.map(s => `
+      <div class="idx-card">
+        <div class="n">${s.ticker || ''}</div>
+        <div class="v">${s.price || '—'}</div>
+        <div class="c ${/-/.test(s.change || '') ? 'neg' : (/\+/.test(s.change || '') ? 'pos' : 'neu')}">${s.change || ''}</div>
+        <div class="sub">${sentIcon[s.sentiment] || ''} ${s.sentiment || ''}</div>
+        <div class="one" style="font-size:11px;margin-top:4px">${s.recommendation || ''}</div>
+      </div>`).join('');
+    const alerts = (r.risk_alerts || []).map(a => `<li>⚠️ ${a}</li>`).join('');
+    const signals = r.watchlist.map(s => {
+      const items = (s.key_signals || []).map(x => `<li>${x}</li>`).join('') || '<li>—</li>';
+      const news = s.news_headlines?.length ? `<div style="margin-top:6px;font-size:12px;color:var(--muted)"><b>Tin:</b> ${s.news_headlines.join(' · ')}</div>` : '';
+      return `<div class="col"><h4>${s.ticker} — Key Signals</h4><ul>${items}</ul>${news}</div>`;
+    }).join('');
+    el.innerHTML = `
+      <div class="head"><span class="title">📋 Watchlist Review</span><span class="ts">${fmtTs(mr.ts)}</span></div>
+      <div class="headline">${r.headline || ''}</div>
+      <div class="review-grid">${stocks}</div>
+      <div class="breadth"><span>Tổng quan: <b>${r.overall_sentiment || '—'}</b></span></div>
+      ${alerts ? `<h4>⚠️ Rủi ro</h4><ul>${alerts}</ul>` : ''}
+      <div class="review-list">${signals}</div>
+      <div class="outlook"><b>Nhận định:</b> ${r.outlook || '—'}</div>
+    `;
+  } else {
+    // OLD schema fallback: market indices
+    const idx = (r.indices || []).map(i => `
+      <div class="idx-card">
+        <div class="n">${i.name || ''}</div>
+        <div class="v">${i.value || '—'}</div>
+        <div class="c ${/-/.test(i.change || '') ? 'neg' : (/\+/.test(i.change || '') ? 'pos' : 'neu')}">${i.change || ''}</div>
+      </div>`).join('');
+    const b = r.breadth || {};
+    el.innerHTML = `
+      <div class="head"><span class="title">📋 Market Review</span><span class="ts">${fmtTs(mr.ts)}</span></div>
+      <div class="headline">${r.headline || ''}</div>
+      <div class="review-grid">${idx}</div>
+      <div class="breadth">
+        <span>Tăng: <b>${b.advancers || '—'}</b></span> · <span>Giảm: <b>${b.decliners || '—'}</b></span> · <span>Trần: <b>${b.ceiling || '—'}</b></span> · <span>Sàn: <b>${b.floor || '—'}</b></span>
+        <span style="margin-left:8px">Ngoại: <b>${r.foreign_flow || '—'}</b></span>
+      </div>
+      <div class="review-list">
+        <div class="col"><h4>Ngành dẫn dắt</h4><ul>${(r.sectors?.leaders||[]).map(x=>`<li>${x}</li>`).join('')||'<li>—</li>'}</ul></div>
+        <div class="col"><h4>Ngành điều chỉnh</h4><ul>${(r.sectors?.laggards||[]).map(x=>`<li>${x}</li>`).join('')||'<li>—</li>'}</ul></div>
+      </div>
+      <h4>Highlights</h4><ul>${(r.highlights||[]).map(x=>`<li>${x}</li>`).join('')||'<li>—</li>'}</ul>
+      <div class="outlook"><b>Nhận định:</b> ${r.outlook || '—'}</div>
+    `;
+  }
+}
+
+async function loadDetail(ticker) {
+  const panel = document.getElementById('detail');
+  panel.style.display = '';
+  panel.innerHTML = `<div class="empty">Đang tải ${ticker}…</div>`;
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const r = await fetch(`/api/stock/${ticker}`);
+  const d = await r.json();
+  const dec = (d.decision?.data && !d.decision.data.error) ? d.decision.data : null;
+  const dp = d.data_perspective?.data || dec?.dashboard?.data_perspective || {};
+  const intraOhlcv = d.intraday_ohlcv?.data;
+  const intraOhlcvRows = rowsOf(intraOhlcv);
+  const intraOhlcvLast = lastRow(intraOhlcv);
+  const ohlcv = rowsOf(d.ohlcv?.data);
+  const news = rowsOf(d.news?.data);
+  const stats = pickRow(d.stats?.data) || {};
+  const quote = pickRow(d.quote?.data) || {};
+  const taLatest = pickRow(d.ta?.data) || {};
+
+  const dash = dec?.dashboard || {};
+  const core = dash.core_conclusion || {};
+  const intel = dash.intelligence || {};
+  const battle = dash.battle_plan || {};
+  const dataP = dash.data_perspective || {};
+  const trend = dp.trend_status || {};
+  const pp = dp.price_position || {};
+  const ind = dp.indicators || {};
+
+  const close = pickPrice(quote, taLatest, intraOhlcvLast) ?? pp.current_price;
+
+  const news10 = news.slice(0, 8).map(n => `
+    <div class="news-item">
+      <b>${n.title || n.headline || 'News'}</b>
+      <span>${n.source || ''} ${(n.published_at || n.date || '').toString().slice(0,16)}</span>
+    </div>`).join('') || '<div class="empty">Chưa có news</div>';
+
+  const statsRows = Object.entries(stats).filter(([_,v]) => typeof v !== 'object').slice(0,12)
+    .map(([k,v]) => `<div class="r"><span>${k}</span><b>${v}</b></div>`).join('');
+
+  panel.innerHTML = `
+    <div class="panel-head">
+      <div>
+        <h2>${ticker} ${dec?.stock_name ? `<span style="font-weight:500;color:var(--muted);font-size:14px">· ${dec.stock_name}</span>` : ''}</h2>
+        <div class="sub">${core.one_sentence || dec?.analysis_summary || ''}</div>
+      </div>
+      <button class="closex" onclick="document.getElementById('detail').style.display='none'">✕</button>
+    </div>
+
+    <div class="topline">
+      <div class="ksum"><div class="l">Giá</div><div class="v">${fmtNum(close)}</div></div>
+      <div class="ksum"><div class="l">Score</div><div class="v">${dec?.sentiment_score ?? '—'}/100</div></div>
+      <div class="ksum"><div class="l">Trend</div><div class="v">${dec?.trend_prediction || trend.ma_alignment || '—'}</div></div>
+      <div class="ksum"><div class="l">Khuyến nghị</div><div class="v">${dec?.operation_advice || '—'}</div></div>
+    </div>
+
+    <div class="panel-grid">
+      <div>
+        <div class="lab">Giá đóng cửa 60 phiên</div>
+        <div class="chart-wrap"><canvas id="priceChart"></canvas></div>
+      </div>
+      <div>
+        <div class="lab">Phân tích kỹ thuật</div>
+        <div class="data-tbl">
+          <div class="r"><span>MA5 / MA10 / MA20</span><b>${fmtNum(pp.ma5)} / ${fmtNum(pp.ma10)} / ${fmtNum(pp.ma20)}</b></div>
+          <div class="r"><span>Trạng thái MA</span><b>${trend.ma_alignment || '—'}</b></div>
+          <div class="r"><span>Trend score</span><b>${trend.trend_score ?? '—'}/100</b></div>
+          <div class="r"><span>RSI(14)</span><b>${fmt2(ind.rsi_14)}</b></div>
+          <div class="r"><span>MACD / Signal / Hist</span><b>${fmt2(ind.macd)} / ${fmt2(ind.macd_signal)} / ${fmt2(ind.macd_histogram)}</b></div>
+          <div class="r"><span>Bias MA5</span><b>${fmt2(pp.bias_ma5)}% (${pp.bias_status || '—'})</b></div>
+          <div class="r"><span>Hỗ trợ / Kháng cự</span><b>${fmtNum(pp.support_level)} / ${fmtNum(pp.resistance_level)}</b></div>
+        </div>
+        <h4>Stats</h4>
+        <div class="data-tbl">${statsRows || '<div class="empty">Chưa có stats</div>'}</div>
+      </div>
+    </div>
+
+    <h4>📊 Cốt lõi quyết định</h4>
+    <div class="data-tbl">
+      <div class="r"><span>Tín hiệu</span><b>${core.signal_type || '—'}</b></div>
+      <div class="r"><span>Time sensitivity</span><b>${core.time_sensitivity || '—'}</b></div>
+      <div class="r"><span>Người chưa có vị thế</span><b>${core.position_advice?.no_position || '—'}</b></div>
+      <div class="r"><span>Người đang nắm</span><b>${core.position_advice?.has_position || '—'}</b></div>
+    </div>
+
+    <div class="blocks">
+      <div class="blk">
+        <h4>🚨 Risks</h4>
+        <ul>${(intel.risk_alerts || []).map(x => `<li class="neg-li">${x}</li>`).join('') || '<li>—</li>'}</ul>
+      </div>
+      <div class="blk">
+        <h4>✨ Catalysts</h4>
+        <ul>${(intel.positive_catalysts || []).map(x => `<li class="pos-li">${x}</li>`).join('') || '<li>—</li>'}</ul>
+      </div>
+    </div>
+
+    <div class="data-tbl" style="margin-top:14px">
+      <div class="r"><span>📊 Triển vọng KQKD</span><b>${intel.earnings_outlook || '—'}</b></div>
+      <div class="r"><span>💭 Tâm lý thị trường</span><b>${intel.sentiment_summary || '—'}</b></div>
+      <div class="r"><span>📰 Tin nóng</span><b>${intel.latest_news || '—'}</b></div>
+    </div>
+
+    <h4>🎯 Battle plan</h4>
+    <div class="battle">
+      <div class="grid4">
+        <div class="bp"><div class="l">Mua lý tưởng</div><div class="v">${battle.sniper_points?.ideal_buy || '—'}</div></div>
+        <div class="bp"><div class="l">Mua thứ cấp</div><div class="v">${battle.sniper_points?.secondary_buy || '—'}</div></div>
+        <div class="bp"><div class="l">Stop loss</div><div class="v">${battle.sniper_points?.stop_loss || '—'}</div></div>
+        <div class="bp"><div class="l">Take profit</div><div class="v">${battle.sniper_points?.take_profit || '—'}</div></div>
+      </div>
+      <div class="data-tbl" style="margin-top:10px">
+        <div class="r"><span>Tỷ trọng đề xuất</span><b>${battle.position_strategy?.suggested_position || '—'}</b></div>
+        <div class="r"><span>Kế hoạch vào lệnh</span><b>${battle.position_strategy?.entry_plan || '—'}</b></div>
+        <div class="r"><span>Kiểm soát rủi ro</span><b>${battle.position_strategy?.risk_control || '—'}</b></div>
+      </div>
+      <h4>✅ Action checklist</h4>
+      <div class="checklist">
+        ${(battle.action_checklist || []).map(x => `<div>${x}</div>`).join('') || '<div>—</div>'}
+      </div>
+    </div>
+
+    <h4>📰 News</h4>
+    <div class="news-list">${news10}</div>
+  `;
+
+  const chartData = (intraOhlcvRows.length ? intraOhlcvRows : ohlcv).slice().reverse();
+  if (chartData.length) {
+    const labels = chartData.map(c => (c.timestamp || c.date || '').toString().slice(0, 10));
+    const closes = chartData.map(c => c.close ?? c.c);
+    new Chart(document.getElementById('priceChart'), {
+      type: 'line',
+      data: { labels, datasets: [{ label: 'Close', data: closes, borderColor: '#2563EB', backgroundColor: 'rgba(37,99,235,.1)', fill: true, tension: .3, pointRadius: 0 }] },
+      options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false } } }
+    });
+  }
+}
+
+async function getPipelineState() {
+  const r = await fetch('/api/overview');
+  const d = await r.json();
+  return d.pipeline || {};
+}
+
+async function refresh(mode) {
+  const id = mode === 'eod' ? 'refreshEod' : 'refreshIntra';
+  const btn = document.getElementById(id);
+  const label = mode === 'eod' ? 'EOD + AI' : 'intraday';
+  btn.disabled = true;
+
+  // Snapshot before triggering
+  const before = await getPipelineState();
+  const runKey = mode === 'eod' ? 'last_eod' : 'last_intraday';
+  const prevStartedAt = before[runKey]?.started_at;
+
+  // Trigger pipeline
+  btn.textContent = '⏳ Đang gọi pipeline…';
+  try {
+    const ref = await fetch('/api/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode }) });
+    if (!ref.ok && ref.status === 429) {
+      btn.textContent = '⚠️ Pipeline đang chạy, chờ tí…';
+      // Someone else started it — poll for completion anyway
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = `❌ Lỗi: ${e.message}`;
+    setTimeout(() => { btn.textContent = mode === 'eod' ? 'Run EOD + AI' : 'Refresh intraday'; }, 3000);
+    return;
+  }
+
+  // Poll until pipeline starts (new started_at) then finishes (finished_at set)
+  const maxWait = mode === 'eod' ? 900 : 120; // 15 min / 2 min
+  const interval = mode === 'eod' ? 5000 : 2000;
+  let elapsed = 0;
+  let newRunSeen = false;
+
+  const poll = () => new Promise((resolve) => {
+    const check = async () => {
+      elapsed += interval;
+      try {
+        const state = await getPipelineState();
+        const run = state[runKey] || {};
+
+        if (!newRunSeen) {
+          // Check if a new run has started (different started_at, or started_at changed while prev was null)
+          if (run.started_at && run.started_at !== prevStartedAt) {
+            newRunSeen = true;
+            btn.textContent = `⏳ ${label} đang chạy (${Math.round(elapsed/1000)}s)…`;
+          } else if (elapsed > 15000) {
+            // Pipeline might have started before our snapshot — check if finished_at is recent
+            newRunSeen = true;
+          }
+        } else {
+          btn.textContent = `⏳ ${label} đang chạy (${Math.round(elapsed/1000)}s)…`;
+        }
+
+        // Check completion: either finished_at is set, or status is set
+        if (run.finished_at) {
+          btn.textContent = run.status === 'error' ? '⚠️ Pipeline lỗi!' : '✅ Hoàn tất!';
+          btn.disabled = false;
+          setTimeout(() => { btn.textContent = mode === 'eod' ? 'Run EOD + AI' : 'Refresh intraday'; }, 2000);
+          await loadOverview();
+          resolve();
+          return;
+        }
+
+        if (elapsed >= maxWait * 1000) {
+          btn.textContent = '⚠️ Timeout — thử lại sau';
+          btn.disabled = false;
+          setTimeout(() => { btn.textContent = mode === 'eod' ? 'Run EOD + AI' : 'Refresh intraday'; }, 3000);
+          await loadOverview(); // Reload anyway — pipeline might have finished silently
+          resolve();
+          return;
+        }
+      } catch (_) { /* polling error, keep trying */ }
+
+      setTimeout(check, interval);
+    };
+    check();
+  });
+
+  await poll();
+  btn.disabled = false;
+}
+
+document.getElementById('refreshIntra').onclick = () => refresh('intraday');
+document.getElementById('refreshEod').onclick = () => refresh('eod');
+
+// ── Tab switching ──
+let activeTab = 'overview';
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTab = btn.dataset.tab;
+    document.getElementById('overviewPanel').classList.toggle('show', activeTab === 'overview');
+    document.getElementById('socialPanel').classList.toggle('show', activeTab === 'social');
+    if (activeTab === 'social') loadSocialOverview();
+  });
+});
+
+// ── Social Posts ──
+let socialSearchQuery = '';
+let socialOverviewData = null;
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 1) return 'vừa xong';
+  if (mins < 60) return `${mins} phút trước`;
+  if (hours < 24) return `${hours} giờ trước`;
+  return `${days} ngày trước`;
+}
+
+function renderMarkdown(md) {
+  if (!md) return '';
+  let html = md;
+  html = html.replace(/((?:^\|.+\|\n?)+)/gm, (match) => {
+    const lines = match.trim().split('\n').filter(l => l.includes('|'));
+    if (lines.length < 2) return match;
+    const isHeaderSep = (l) => /^\|?\s*[-: ]+\s*(\|\s*[-: ]+\s*)+\|?\s*$/.test(l);
+    const dataLines = lines.filter(l => !isHeaderSep(l));
+    if (!dataLines.length) return match;
+    const header = dataLines[0];
+    const body = dataLines.slice(1);
+    const toRow = (l, tag) => {
+      const cells = l.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+      return `<tr>${cells.map(c => `<${tag}>${c}</${tag}>`).join('')}</tr>`;
+    };
+    return `<table class="social-table">${toRow(header, 'th')}${body.map(r => toRow(r, 'td')).join('')}</table>`;
+  });
+  html = html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  html = html.replace(/\n/g, '<br>');
+  return html;
+}
+
+function sourceBadge(name) {
+  if (!name) return '📢 Khác';
+  if (/youtube|vlog|channel/i.test(name)) return '🎬 Youtube';
+  if (/facebook|fb/i.test(name)) return '📘 Facebook';
+  if (/club|group|fanpage|group/i.test(name)) return '👥 Fanpage/Group';
+  if (/vps|broker|chứng khoán/i.test(name)) return '🏦 Broker';
+  return '📢 Khác';
+}
+
+// ── Overview: overall summary + per-ticker + raw posts ──
+async function loadSocialOverview() {
+  const container = document.getElementById('socialPosts');
+  const badge = document.getElementById('socialBadge');
+  const searchBox = document.getElementById('socialSearchInput');
+  const clearBtn = document.getElementById('socialClearBtn');
+
+  container.innerHTML = '<div class="empty">⏳ Đang tải tổng quan social market (fetch posts + AI phân tích)…</div>';
+
+  try {
+    const r = await fetch('/api/social-overview');
+    const data = await r.json();
+    socialOverviewData = data;
+
+    if (data.error) {
+      container.innerHTML = `<div class="empty">⚠️ ${data.error}</div>`;
+      return;
+    }
+
+    badge.textContent = data.total_24h ? `${data.total_24h} post / 24h` : '';
+
+    let html = '';
+
+    // ── Market Assessment (hero card at top) ──
+    if (data.overall_summary) {
+      html += `
+        <div class="market-assessment">
+          <div class="ma-label">📈 Nhận định thị trường từ Social Posts</div>
+          <div class="ma-title">${data.raw_posts?.length || 0} post mới nhất</div>
+          <div class="ma-body">${renderMarkdown(data.overall_summary)}</div>
+        </div>`;
+    }
+
+    // ── Per-ticker summaries ──
+    const tickerSummaries = data.ticker_summaries || [];
+    const validSummaries = tickerSummaries.filter(ts => ts.summary);
+    if (validSummaries.length) {
+      html += '<div class="section-divider"><span>📊 Nhận định theo mã trong watchlist</span></div>';
+      html += '<div class="ticker-summaries">';
+      for (const ts of tickerSummaries) {
+        if (!ts.summary) continue;
+        html += `
+          <div class="ticker-card">
+            <div class="ticker-header" onclick="toggleTickerCard(this)">
+              <span>📈 ${ts.ticker}</span>
+              <span class="toggle-icon">▼</span>
+            </div>
+            <div class="ticker-body">${renderMarkdown(ts.summary)}</div>
+          </div>`;
+      }
+      html += '</div>';
+    }
+
+    // ── Raw posts ──
+    const rawPosts = data.raw_posts || [];
+    if (rawPosts.length) {
+      html += '<div class="section-divider"><span>📋 20 post mới nhất</span></div>';
+      html += rawPosts.map(p => {
+        const text = (p.summary_vi || '').trim();
+        const isLong = text.length > 400;
+        const id = 'post-' + Math.random().toString(36).slice(2, 8);
+        const src = sourceBadge(p.sender_name);
+        return `
+          <div class="post-card">
+            <div class="post-meta">
+              <span class="sender">${src} ${p.sender_name || 'Unknown'}</span>
+              <span class="time">${timeAgo(p.started_at)} · ${(p.started_at || '').slice(0, 16).replace('T', ' ')}</span>
+            </div>
+            <div class="post-headline">${p.headline || ''}</div>
+            <div class="post-summary${isLong ? ' collapsed' : ''}" id="${id}">${text}</div>
+            ${isLong ? `<span class="post-expand" onclick="togglePost('${id}', this)">📖 Xem thêm</span>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    container.innerHTML = html || '<div class="empty">Chưa có dữ liệu social</div>';
+  } catch (e) {
+    container.innerHTML = `<div class="empty">⚠️ Lỗi kết nối: ${e.message}</div>`;
+  }
+}
+
+// ── Search: per-ticker AI summary + posts ──
+async function loadSocialSearch() {
+  const container = document.getElementById('socialPosts');
+  const badge = document.getElementById('socialBadge');
+  const clearBtn = document.getElementById('socialClearBtn');
+
+  container.innerHTML = `<div class="empty">⏳ Đang tìm & phân tích AI cho "${socialSearchQuery}"…</div>`;
+
+  try {
+    const r = await fetch(`/api/social-posts?search=${encodeURIComponent(socialSearchQuery)}`);
+    const data = await r.json();
+
+    if (data.error) {
+      container.innerHTML = `<div class="empty">⚠️ ${data.error}</div>`;
+      return;
+    }
+
+    const posts = data.posts || [];
+    const summary = data.summary || null;
+    badge.textContent = posts.length ? `${posts.length} post` : '';
+    clearBtn.style.display = 'inline-block';
+
+    if (!posts.length) {
+      container.innerHTML = `<div class="empty">Không tìm thấy post nào cho "${socialSearchQuery}"</div>`;
+      return;
+    }
+
+    let html = '';
+
+    if (summary) {
+      html += `
+        <div class="ai-summary">
+          <div class="ai-summary-label">🤖 AI Phân tích · ${data.entity || socialSearchQuery}</div>
+          <div class="ai-summary-body">${renderMarkdown(summary)}</div>
+        </div>
+        <div class="section-divider"><span>📋 Danh sách post gốc</span></div>`;
+    }
+
+    html += posts.map(p => {
+      const text = (p.summary_vi || '').trim();
+      const isLong = text.length > 400;
+      const id = 'post-' + Math.random().toString(36).slice(2, 8);
+      const src = sourceBadge(p.sender_name);
+      return `
+        <div class="post-card">
+          <div class="post-meta">
+            <span class="sender">${src} ${p.sender_name || 'Unknown'}</span>
+            <span class="time">${timeAgo(p.started_at)} · ${(p.started_at || '').slice(0, 16).replace('T', ' ')}</span>
+          </div>
+          <div class="post-headline">${p.headline || ''}</div>
+          <div class="post-summary${isLong ? ' collapsed' : ''}" id="${id}">${text}</div>
+          ${isLong ? `<span class="post-expand" onclick="togglePost('${id}', this)">📖 Xem thêm</span>` : ''}
+        </div>`;
+    }).join('');
+
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<div class="empty">⚠️ Lỗi kết nối: ${e.message}</div>`;
+  }
+}
+
+function togglePost(id, el) {
+  const div = document.getElementById(id);
+  if (!div) return;
+  const collapsed = div.classList.toggle('collapsed');
+  el.textContent = collapsed ? '📖 Xem thêm' : '📕 Thu gọn';
+}
+
+function toggleTickerCard(header) {
+  const body = header.nextElementSibling;
+  const icon = header.querySelector('.toggle-icon');
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  icon.textContent = open ? '▶' : '▼';
+}
+
+function doSocialSearch() {
+  const input = document.getElementById('socialSearchInput');
+  const query = input.value.trim();
+  socialSearchQuery = query;
+  document.getElementById('socialClearBtn').style.display = query ? '' : 'none';
+  if (query) {
+    loadSocialSearch();
+  } else {
+    loadSocialOverview();
+  }
+}
+
+document.getElementById('socialSearchBtn').addEventListener('click', doSocialSearch);
+document.getElementById('socialSearchInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') doSocialSearch();
+});
+document.getElementById('socialClearBtn').addEventListener('click', () => {
+  document.getElementById('socialSearchInput').value = '';
+  socialSearchQuery = '';
+  document.getElementById('socialClearBtn').style.display = 'none';
+  document.getElementById('socialBadge').textContent = '';
+  loadSocialOverview();
+});
+
+document.getElementById('socialRefreshBtn').addEventListener('click', async () => {
+  document.getElementById('socialRefreshBtn').disabled = true;
+  document.getElementById('socialRefreshBtn').textContent = '⏳ Đang clear…';
+  try {
+    await fetch('/api/social-cache-clear', { method: 'POST' });
+    document.getElementById('socialSearchInput').value = '';
+    socialSearchQuery = '';
+    document.getElementById('socialClearBtn').style.display = 'none';
+    document.getElementById('socialBadge').textContent = '';
+    await loadSocialOverview();
+  } finally {
+    document.getElementById('socialRefreshBtn').disabled = false;
+    document.getElementById('socialRefreshBtn').textContent = '🔄 Làm mới';
+  }
+});
+
+loadOverview();
+</script>
+</body>
+</html>
