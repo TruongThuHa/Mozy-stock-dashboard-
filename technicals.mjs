@@ -36,9 +36,26 @@ export function emaSeries(values, period) {
   const out = [];
   if (!values?.length) return out;
   const k = 2 / (period + 1);
-  let prev = values[0];
+  // Seed EMA với SMA của `period` giá trị đầu (chuẩn hơn seed bằng values[0]).
+  // Trước khi đủ `period` điểm thì trả null để không bịa số.
+  if (values.length < period) {
+    // Không đủ dữ liệu: seed tạm bằng giá trị đầu để chuỗi vẫn có độ dài đúng.
+    let prev = values[0];
+    out.push(prev);
+    for (let i = 1; i < values.length; i++) {
+      const v = values[i] ?? prev;
+      prev = v * k + prev * (1 - k);
+      out.push(prev);
+    }
+    return out;
+  }
+  let seed = 0;
+  for (let i = 0; i < period; i++) seed += Number(values[i]) || 0;
+  seed /= period;
+  for (let i = 0; i < period - 1; i++) out.push(null);
+  let prev = seed;
   out.push(prev);
-  for (let i = 1; i < values.length; i++) {
+  for (let i = period; i < values.length; i++) {
     const v = values[i] ?? prev;
     prev = v * k + prev * (1 - k);
     out.push(prev);
@@ -71,13 +88,23 @@ export function macd(rows, fast = 12, slow = 26, signal = 9, key = 'close') {
   const closes = rows.map(r => Number(r[key]) || 0);
   const fastE = emaSeries(closes, fast);
   const slowE = emaSeries(closes, slow);
-  const macdLine = closes.map((_, i) => fastE[i] - slowE[i]);
-  const signalLine = emaSeries(macdLine, signal);
-  const last = macdLine.length - 1;
+  // MACD line chỉ hợp lệ khi cả 2 EMA đã có giá trị (slow EMA xuất hiện muộn hơn)
+  const macdLine = closes.map((_, i) =>
+    (fastE[i] == null || slowE[i] == null) ? null : fastE[i] - slowE[i]
+  );
+  // Lấy phần đuôi liên tục không null để tính signal EMA
+  const firstValid = macdLine.findIndex(v => v != null);
+  if (firstValid < 0) return null;
+  const validMacd = macdLine.slice(firstValid);
+  const signalTail = emaSeries(validMacd, signal);
+  const last = validMacd.length - 1;
+  const macdVal = validMacd[last];
+  const signalVal = signalTail[last];
+  if (macdVal == null || signalVal == null) return null;
   return {
-    macd: macdLine[last],
-    signal: signalLine[last],
-    histogram: macdLine[last] - signalLine[last]
+    macd: macdVal,
+    signal: signalVal,
+    histogram: macdVal - signalVal
   };
 }
 
