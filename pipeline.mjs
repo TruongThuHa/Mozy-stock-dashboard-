@@ -110,7 +110,7 @@ async function generateDecision(db, ticker) {
 async function runMarketReview(db) {
   console.log('[eod] generating market review');
   try {
-    const review = await generateMarketReview();
+    const review = await generateMarketReview(db);
     db.prepare(`
       INSERT INTO latest (ticker, kind, ts, payload)
       VALUES ('_MARKET', 'review', ?, ?)
