@@ -156,6 +156,21 @@ Yêu cầu nghiêm ngặt:
 - Không thêm trường khác ngoài schema.`;
 }
 
+// Kiểm tra tối thiểu để chắc AI trả đúng cấu trúc, tránh lưu rác vào DB.
+function validateDashboard(obj) {
+  if (!obj || typeof obj !== 'object') throw new Error('decision không phải object');
+  const required = ['sentiment_score', 'trend_prediction', 'operation_advice', 'decision_type'];
+  const missing = required.filter(k => obj[k] == null);
+  if (missing.length) throw new Error('decision thiếu field: ' + missing.join(', '));
+  const score = Number(obj.sentiment_score);
+  if (Number.isNaN(score)) throw new Error('sentiment_score không phải số');
+  obj.sentiment_score = Math.max(0, Math.min(100, score));
+  if (obj.dashboard != null && typeof obj.dashboard !== 'object') {
+    throw new Error('dashboard sai kiểu');
+  }
+  return obj;
+}
+
 export async function generateDecisionDashboard(ctx) {
   const prompt = buildPrompt(ctx);
   const out = await askMozy(prompt, { mode: 'simple_chat', timeoutSec: 240 });
@@ -163,5 +178,11 @@ export async function generateDecisionDashboard(ctx) {
   const clean = out.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/m, '').trim();
   const m = clean.match(/\{[\s\S]*\}\s*$/);
   if (!m) throw new Error('Mozy did not return JSON: ' + clean.slice(0, 200));
-  return JSON.parse(m[0]);
+  let parsed;
+  try {
+    parsed = JSON.parse(m[0]);
+  } catch (e) {
+    throw new Error('Mozy trả JSON không parse được: ' + e.message);
+  }
+  return validateDashboard(parsed);
 }
