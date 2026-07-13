@@ -345,17 +345,23 @@ app.get('/api/stock/:ticker/history/:kind', (req, res) => {
 });
 
 let refreshing = false;
-function startPipeline(mode) {
+function startPipeline(mode, tickers = null) {
   if (refreshing) return false;
   refreshing = true;
-  const child = spawn('node', [path.join(__dirname, 'pipeline.mjs'), mode], {
+  const args = [path.join(__dirname, 'pipeline.mjs'), mode];
+  if (tickers && tickers.length) args.push('--tickers', tickers.join(','));
+  const child = spawn('node', args, {
     cwd: __dirname,
     stdio: 'ignore',
     detached: true
   });
   child.unref();
+  child.on('error', (err) => {
+    console.error('[scheduler] pipeline spawn error:', err.message);
+    refreshing = false;
+  });
   child.on('exit', () => { refreshing = false; });
-  console.log(`[scheduler] started pipeline: ${mode}`);
+  console.log(`[scheduler] started pipeline: ${mode}${tickers ? ` (${tickers.join(',')})` : ''}`);
   return true;
 }
 
@@ -457,7 +463,11 @@ app.use(express.static(path.join(__dirname, 'public'), { setHeaders: (res) => {
 }}));
 
 const port = process.env.PORT || config.port || 7878;
-const host = process.env.HOST || config.host || '0.0.0.0';
+const host = process.env.HOST || config.host || '127.0.0.1';
+
+if (host !== '127.0.0.1' && host !== 'localhost') {
+  console.warn(`[security] ⚠️  Server đang bind ${host} — dashboard KHÔNG có auth, mọi máy trong mạng đều truy cập & trigger được pipeline. Chỉ nên dùng 127.0.0.1 trừ khi bro tự thêm lớp bảo vệ (reverse proxy + auth).`);
+}
 
 // ── Config hot-reload ──
 // Watches config.json for changes; on change, diffs ticker list and auto-triggers
@@ -470,25 +480,6 @@ function diffTickers(oldList, newList) {
   const added = [...newSet].filter(t => !oldSet.has(t));
   const removed = [...oldSet].filter(t => !newSet.has(t));
   return { added, removed };
-}
-
-function spawnPipeline(tickers, mode) {
-  const child = spawn('node', [
-    path.join(__dirname, 'pipeline.mjs'),
-    mode,
-    '--tickers', tickers.join(',')
-  ], {
-    cwd: __dirname,
-    stdio: 'inherit',
-    detached: true
-  });
-  child.unref();
-  child.on('error', (err) => {
-    console.error(`[config-watch] pipeline spawn error:`, err.message);
-  });
-  child.on('exit', (code) => {
-    console.log(`[config-watch] pipeline for ${tickers.join(',')} (${mode}) exited code=${code}`);
-  });
 }
 
 function onConfigChanged() {
@@ -515,13 +506,18 @@ function onConfigChanged() {
 
   if (added.length > 0) {
     console.log(`[config-watch] auto-triggering pipeline (all) for new tickers: ${added.join(',')}`);
-    spawnPipeline(added, 'all');
+    // Dùng chung guard `refreshing` với /api/refresh; nếu đang chạy thì thử lại sau.
+    if (!startPipeline('all', added)) {
+      console.log('[config-watch] pipeline đang bận, sẽ thử lại sau 5s cho:', added.join(','));
+      setTimeout(() => startPipeline('all', added), 5000);
+    }
   }
 }
 
-// Use fs.watch with debounce (macOS fires multiple events per save)
-fs.watch(configPath, (eventType) => {
-  if (eventType !== 'change') return;
+// fs.watchFile (polling) ổn định hơn fs.watch trên Linux/WSL, tránh mất watch khi
+// editor lưu kiểu atomic-rename. Debounce chống trigger dồn dập.
+fs.watchFile(configPath, { interval: 1000 }, (curr, prev) => {
+  if (curr.mtimeMs === prev.mtimeMs) return;
   clearTimeout(configChangeDebounce);
   configChangeDebounce = setTimeout(onConfigChanged, CONFIG_DEBOUNCE_MS);
 });
