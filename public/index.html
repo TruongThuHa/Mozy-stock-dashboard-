@@ -317,7 +317,7 @@ async function loadOverview() {
       // Error card — show API failure prominently
       const errCard = document.createElement('div');
       errCard.className = 'card card-error';
-      const errMsgs = (pStatus.errors || []).map(e => `<li>${e}</li>`).join('');
+      const errMsgs = (pStatus.errors || []).map(e => `<li>${escapeHtml(e)}</li>`).join('');
       errCard.innerHTML = `
         <div class="row">
           <h2>⚠️ ${t.ticker}</h2>
@@ -351,7 +351,7 @@ async function loadOverview() {
       <div class="row">
         <div>
           <h2>${t.ticker}</h2>
-          <div class="sub">${dec?.stock_name || ''}</div>
+          <div class="sub">${escapeHtml(dec?.stock_name || '')}</div>
         </div>
         ${ratingPill(dec?.operation_advice, dec?.decision_type)}
       </div>
@@ -360,9 +360,9 @@ async function loadOverview() {
       <div class="score-bar"><i style="width:${score == null ? 0 : score}%"></i></div>
       <div class="meta-row">
         <span>${score != null ? `Score ${score}/100` : 'Chưa có Decision'}</span>
-        <span>${sig}</span>
+        <span>${escapeHtml(sig)}</span>
       </div>
-      <div class="one">${one}</div>
+      <div class="one">${escapeHtml(one)}</div>
       <div class="meta-row">
         <span>KL: ${fmtNum(pickVolume(q, ohlcvLast))} · GT: ${pickValue(q) != null ? (pickValue(q)/1e9).toFixed(1) + ' tỷ' : '—'}</span>
         <span>${fmtTs(t.last_quote_ts)}</span>
@@ -379,7 +379,7 @@ function renderReview(mr) {
   const r = mr.data;
   if (!r || r.error) {
     el.style.display = '';
-    el.innerHTML = `<div class="head"><span class="title">📋 Watchlist Review</span><span class="ts">${fmtTs(mr.ts)}</span></div><div class="empty">Chưa có review (lỗi: ${r?.error || 'N/A'})</div>`;
+    el.innerHTML = `<div class="head"><span class="title">📋 Watchlist Review</span><span class="ts">${fmtTs(mr.ts)}</span></div><div class="empty">Chưa có review (lỗi: ${escapeHtml(r?.error || 'N/A')})</div>`;
     return;
   }
   const isNew = Array.isArray(r.watchlist);
@@ -390,50 +390,50 @@ function renderReview(mr) {
     // NEW schema: per-stock watchlist
     const stocks = r.watchlist.map(s => `
       <div class="idx-card">
-        <div class="n">${s.ticker || ''}</div>
-        <div class="v">${s.price || '—'}</div>
-        <div class="c ${/-/.test(s.change || '') ? 'neg' : (/\+/.test(s.change || '') ? 'pos' : 'neu')}">${s.change || ''}</div>
-        <div class="sub">${sentIcon[s.sentiment] || ''} ${s.sentiment || ''}</div>
-        <div class="one" style="font-size:11px;margin-top:4px">${s.recommendation || ''}</div>
+        <div class="n">${escapeHtml(s.ticker || '')}</div>
+        <div class="v">${escapeHtml(s.price || '—')}</div>
+        <div class="c ${/-/.test(s.change || '') ? 'neg' : (/\+/.test(s.change || '') ? 'pos' : 'neu')}">${escapeHtml(s.change || '')}</div>
+        <div class="sub">${sentIcon[s.sentiment] || ''} ${escapeHtml(s.sentiment || '')}</div>
+        <div class="one" style="font-size:11px;margin-top:4px">${escapeHtml(s.recommendation || '')}</div>
       </div>`).join('');
-    const alerts = (r.risk_alerts || []).map(a => `<li>⚠️ ${a}</li>`).join('');
+    const alerts = (r.risk_alerts || []).map(a => `<li>⚠️ ${escapeHtml(a)}</li>`).join('');
     const signals = r.watchlist.map(s => {
-      const items = (s.key_signals || []).map(x => `<li>${x}</li>`).join('') || '<li>—</li>';
-      const news = s.news_headlines?.length ? `<div style="margin-top:6px;font-size:12px;color:var(--muted)"><b>Tin:</b> ${s.news_headlines.join(' · ')}</div>` : '';
-      return `<div class="col"><h4>${s.ticker} — Key Signals</h4><ul>${items}</ul>${news}</div>`;
+      const items = (s.key_signals || []).map(x => `<li>${escapeHtml(x)}</li>`).join('') || '<li>—</li>';
+      const news = s.news_headlines?.length ? `<div style="margin-top:6px;font-size:12px;color:var(--muted)"><b>Tin:</b> ${escapeHtml(s.news_headlines.join(' · '))}</div>` : '';
+      return `<div class="col"><h4>${escapeHtml(s.ticker)} — Key Signals</h4><ul>${items}</ul>${news}</div>`;
     }).join('');
     el.innerHTML = `
       <div class="head"><span class="title">📋 Watchlist Review</span><span class="ts">${fmtTs(mr.ts)}</span></div>
-      <div class="headline">${r.headline || ''}</div>
+      <div class="headline">${escapeHtml(r.headline || '')}</div>
       <div class="review-grid">${stocks}</div>
-      <div class="breadth"><span>Tổng quan: <b>${r.overall_sentiment || '—'}</b></span></div>
+      <div class="breadth"><span>Tổng quan: <b>${escapeHtml(r.overall_sentiment || '—')}</b></span></div>
       ${alerts ? `<h4>⚠️ Rủi ro</h4><ul>${alerts}</ul>` : ''}
       <div class="review-list">${signals}</div>
-      <div class="outlook"><b>Nhận định:</b> ${r.outlook || '—'}</div>
+      <div class="outlook"><b>Nhận định:</b> ${escapeHtml(r.outlook || '—')}</div>
     `;
   } else {
     // OLD schema fallback: market indices
     const idx = (r.indices || []).map(i => `
       <div class="idx-card">
-        <div class="n">${i.name || ''}</div>
-        <div class="v">${i.value || '—'}</div>
-        <div class="c ${/-/.test(i.change || '') ? 'neg' : (/\+/.test(i.change || '') ? 'pos' : 'neu')}">${i.change || ''}</div>
+        <div class="n">${escapeHtml(i.name || '')}</div>
+        <div class="v">${escapeHtml(i.value || '—')}</div>
+        <div class="c ${/-/.test(i.change || '') ? 'neg' : (/\+/.test(i.change || '') ? 'pos' : 'neu')}">${escapeHtml(i.change || '')}</div>
       </div>`).join('');
     const b = r.breadth || {};
     el.innerHTML = `
       <div class="head"><span class="title">📋 Market Review</span><span class="ts">${fmtTs(mr.ts)}</span></div>
-      <div class="headline">${r.headline || ''}</div>
+      <div class="headline">${escapeHtml(r.headline || '')}</div>
       <div class="review-grid">${idx}</div>
       <div class="breadth">
         <span>Tăng: <b>${b.advancers || '—'}</b></span> · <span>Giảm: <b>${b.decliners || '—'}</b></span> · <span>Trần: <b>${b.ceiling || '—'}</b></span> · <span>Sàn: <b>${b.floor || '—'}</b></span>
-        <span style="margin-left:8px">Ngoại: <b>${r.foreign_flow || '—'}</b></span>
+        <span style="margin-left:8px">Ngoại: <b>${escapeHtml(r.foreign_flow || '—')}</b></span>
       </div>
       <div class="review-list">
-        <div class="col"><h4>Ngành dẫn dắt</h4><ul>${(r.sectors?.leaders||[]).map(x=>`<li>${x}</li>`).join('')||'<li>—</li>'}</ul></div>
-        <div class="col"><h4>Ngành điều chỉnh</h4><ul>${(r.sectors?.laggards||[]).map(x=>`<li>${x}</li>`).join('')||'<li>—</li>'}</ul></div>
+        <div class="col"><h4>Ngành dẫn dắt</h4><ul>${(r.sectors?.leaders||[]).map(x=>`<li>${escapeHtml(x)}</li>`).join('')||'<li>—</li>'}</ul></div>
+        <div class="col"><h4>Ngành điều chỉnh</h4><ul>${(r.sectors?.laggards||[]).map(x=>`<li>${escapeHtml(x)}</li>`).join('')||'<li>—</li>'}</ul></div>
       </div>
-      <h4>Highlights</h4><ul>${(r.highlights||[]).map(x=>`<li>${x}</li>`).join('')||'<li>—</li>'}</ul>
-      <div class="outlook"><b>Nhận định:</b> ${r.outlook || '—'}</div>
+      <h4>Highlights</h4><ul>${(r.highlights||[]).map(x=>`<li>${escapeHtml(x)}</li>`).join('')||'<li>—</li>'}</ul>
+      <div class="outlook"><b>Nhận định:</b> ${escapeHtml(r.outlook || '—')}</div>
     `;
   }
 }
@@ -470,18 +470,18 @@ async function loadDetail(ticker) {
 
   const news10 = news.slice(0, 8).map(n => `
     <div class="news-item">
-      <b>${n.title || n.headline || 'News'}</b>
-      <span>${n.source || ''} ${(n.published_at || n.date || '').toString().slice(0,16)}</span>
+      <b>${escapeHtml(n.title || n.headline || 'News')}</b>
+      <span>${escapeHtml(n.source || '')} ${escapeHtml((n.published_at || n.date || '').toString().slice(0,16))}</span>
     </div>`).join('') || '<div class="empty">Chưa có news</div>';
 
   const statsRows = Object.entries(stats).filter(([_,v]) => typeof v !== 'object').slice(0,12)
-    .map(([k,v]) => `<div class="r"><span>${k}</span><b>${v}</b></div>`).join('');
+    .map(([k,v]) => `<div class="r"><span>${escapeHtml(k)}</span><b>${escapeHtml(v)}</b></div>`).join('');
 
   panel.innerHTML = `
     <div class="panel-head">
       <div>
-        <h2>${ticker} ${dec?.stock_name ? `<span style="font-weight:500;color:var(--muted);font-size:14px">· ${dec.stock_name}</span>` : ''}</h2>
-        <div class="sub">${core.one_sentence || dec?.analysis_summary || ''}</div>
+        <h2>${escapeHtml(ticker)} ${dec?.stock_name ? `<span style="font-weight:500;color:var(--muted);font-size:14px">· ${escapeHtml(dec.stock_name)}</span>` : ''}</h2>
+        <div class="sub">${escapeHtml(core.one_sentence || dec?.analysis_summary || '')}</div>
       </div>
       <button class="closex" onclick="document.getElementById('detail').style.display='none'">✕</button>
     </div>
@@ -489,8 +489,8 @@ async function loadDetail(ticker) {
     <div class="topline">
       <div class="ksum"><div class="l">Giá</div><div class="v">${fmtNum(close)}</div></div>
       <div class="ksum"><div class="l">Score</div><div class="v">${dec?.sentiment_score ?? '—'}/100</div></div>
-      <div class="ksum"><div class="l">Trend</div><div class="v">${dec?.trend_prediction || trend.ma_alignment || '—'}</div></div>
-      <div class="ksum"><div class="l">Khuyến nghị</div><div class="v">${dec?.operation_advice || '—'}</div></div>
+      <div class="ksum"><div class="l">Trend</div><div class="v">${escapeHtml(dec?.trend_prediction || trend.ma_alignment || '—')}</div></div>
+      <div class="ksum"><div class="l">Khuyến nghị</div><div class="v">${escapeHtml(dec?.operation_advice || '—')}</div></div>
     </div>
 
     <div class="panel-grid">
@@ -502,11 +502,11 @@ async function loadDetail(ticker) {
         <div class="lab">Phân tích kỹ thuật</div>
         <div class="data-tbl">
           <div class="r"><span>MA5 / MA10 / MA20</span><b>${fmtNum(pp.ma5)} / ${fmtNum(pp.ma10)} / ${fmtNum(pp.ma20)}</b></div>
-          <div class="r"><span>Trạng thái MA</span><b>${trend.ma_alignment || '—'}</b></div>
+          <div class="r"><span>Trạng thái MA</span><b>${escapeHtml(trend.ma_alignment || '—')}</b></div>
           <div class="r"><span>Trend score</span><b>${trend.trend_score ?? '—'}/100</b></div>
           <div class="r"><span>RSI(14)</span><b>${fmt2(ind.rsi_14)}</b></div>
           <div class="r"><span>MACD / Signal / Hist</span><b>${fmt2(ind.macd)} / ${fmt2(ind.macd_signal)} / ${fmt2(ind.macd_histogram)}</b></div>
-          <div class="r"><span>Bias MA5</span><b>${fmt2(pp.bias_ma5)}% (${pp.bias_status || '—'})</b></div>
+          <div class="r"><span>Bias MA5</span><b>${fmt2(pp.bias_ma5)}% (${escapeHtml(pp.bias_status || '—')})</b></div>
           <div class="r"><span>Hỗ trợ / Kháng cự</span><b>${fmtNum(pp.support_level)} / ${fmtNum(pp.resistance_level)}</b></div>
         </div>
         <h4>Stats</h4>
@@ -516,45 +516,45 @@ async function loadDetail(ticker) {
 
     <h4>📊 Cốt lõi quyết định</h4>
     <div class="data-tbl">
-      <div class="r"><span>Tín hiệu</span><b>${core.signal_type || '—'}</b></div>
-      <div class="r"><span>Time sensitivity</span><b>${core.time_sensitivity || '—'}</b></div>
-      <div class="r"><span>Người chưa có vị thế</span><b>${core.position_advice?.no_position || '—'}</b></div>
-      <div class="r"><span>Người đang nắm</span><b>${core.position_advice?.has_position || '—'}</b></div>
+      <div class="r"><span>Tín hiệu</span><b>${escapeHtml(core.signal_type || '—')}</b></div>
+      <div class="r"><span>Time sensitivity</span><b>${escapeHtml(core.time_sensitivity || '—')}</b></div>
+      <div class="r"><span>Người chưa có vị thế</span><b>${escapeHtml(core.position_advice?.no_position || '—')}</b></div>
+      <div class="r"><span>Người đang nắm</span><b>${escapeHtml(core.position_advice?.has_position || '—')}</b></div>
     </div>
 
     <div class="blocks">
       <div class="blk">
         <h4>🚨 Risks</h4>
-        <ul>${(intel.risk_alerts || []).map(x => `<li class="neg-li">${x}</li>`).join('') || '<li>—</li>'}</ul>
+        <ul>${(intel.risk_alerts || []).map(x => `<li class="neg-li">${escapeHtml(x)}</li>`).join('') || '<li>—</li>'}</ul>
       </div>
       <div class="blk">
         <h4>✨ Catalysts</h4>
-        <ul>${(intel.positive_catalysts || []).map(x => `<li class="pos-li">${x}</li>`).join('') || '<li>—</li>'}</ul>
+        <ul>${(intel.positive_catalysts || []).map(x => `<li class="pos-li">${escapeHtml(x)}</li>`).join('') || '<li>—</li>'}</ul>
       </div>
     </div>
 
     <div class="data-tbl" style="margin-top:14px">
-      <div class="r"><span>📊 Triển vọng KQKD</span><b>${intel.earnings_outlook || '—'}</b></div>
-      <div class="r"><span>💭 Tâm lý thị trường</span><b>${intel.sentiment_summary || '—'}</b></div>
-      <div class="r"><span>📰 Tin nóng</span><b>${intel.latest_news || '—'}</b></div>
+      <div class="r"><span>📊 Triển vọng KQKD</span><b>${escapeHtml(intel.earnings_outlook || '—')}</b></div>
+      <div class="r"><span>💭 Tâm lý thị trường</span><b>${escapeHtml(intel.sentiment_summary || '—')}</b></div>
+      <div class="r"><span>📰 Tin nóng</span><b>${escapeHtml(intel.latest_news || '—')}</b></div>
     </div>
 
     <h4>🎯 Battle plan</h4>
     <div class="battle">
       <div class="grid4">
-        <div class="bp"><div class="l">Mua lý tưởng</div><div class="v">${battle.sniper_points?.ideal_buy || '—'}</div></div>
-        <div class="bp"><div class="l">Mua thứ cấp</div><div class="v">${battle.sniper_points?.secondary_buy || '—'}</div></div>
-        <div class="bp"><div class="l">Stop loss</div><div class="v">${battle.sniper_points?.stop_loss || '—'}</div></div>
-        <div class="bp"><div class="l">Take profit</div><div class="v">${battle.sniper_points?.take_profit || '—'}</div></div>
+        <div class="bp"><div class="l">Mua lý tưởng</div><div class="v">${escapeHtml(battle.sniper_points?.ideal_buy || '—')}</div></div>
+        <div class="bp"><div class="l">Mua thứ cấp</div><div class="v">${escapeHtml(battle.sniper_points?.secondary_buy || '—')}</div></div>
+        <div class="bp"><div class="l">Stop loss</div><div class="v">${escapeHtml(battle.sniper_points?.stop_loss || '—')}</div></div>
+        <div class="bp"><div class="l">Take profit</div><div class="v">${escapeHtml(battle.sniper_points?.take_profit || '—')}</div></div>
       </div>
       <div class="data-tbl" style="margin-top:10px">
-        <div class="r"><span>Tỷ trọng đề xuất</span><b>${battle.position_strategy?.suggested_position || '—'}</b></div>
-        <div class="r"><span>Kế hoạch vào lệnh</span><b>${battle.position_strategy?.entry_plan || '—'}</b></div>
-        <div class="r"><span>Kiểm soát rủi ro</span><b>${battle.position_strategy?.risk_control || '—'}</b></div>
+        <div class="r"><span>Tỷ trọng đề xuất</span><b>${escapeHtml(battle.position_strategy?.suggested_position || '—')}</b></div>
+        <div class="r"><span>Kế hoạch vào lệnh</span><b>${escapeHtml(battle.position_strategy?.entry_plan || '—')}</b></div>
+        <div class="r"><span>Kiểm soát rủi ro</span><b>${escapeHtml(battle.position_strategy?.risk_control || '—')}</b></div>
       </div>
       <h4>✅ Action checklist</h4>
       <div class="checklist">
-        ${(battle.action_checklist || []).map(x => `<div>${x}</div>`).join('') || '<div>—</div>'}
+        ${(battle.action_checklist || []).map(x => `<div>${escapeHtml(x)}</div>`).join('') || '<div>—</div>'}
       </div>
     </div>
 
@@ -693,9 +693,23 @@ function timeAgo(ts) {
   return `${days} ngày trước`;
 }
 
+// Escape mọi dữ liệu ngoại lai (social feed, output AI) trước khi nhét vào innerHTML.
+// Đây là hàng rào chống XSS: post/tin tức bên ngoài có thể chứa <img onerror=...>.
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderMarkdown(md) {
   if (!md) return '';
-  let html = md;
+  // Escape TRƯỚC, rồi mới áp markdown. Ký tự markdown (| ** \n) đều là ASCII nên
+  // không bị escape đụng tới → bảng và bold vẫn hoạt động, nhưng thẻ HTML độc bị vô hiệu.
+  let html = escapeHtml(md);
   html = html.replace(/((?:^\|.+\|\n?)+)/gm, (match) => {
     const lines = match.trim().split('\n').filter(l => l.includes('|'));
     if (lines.length < 2) return match;
@@ -739,7 +753,7 @@ async function loadSocialOverview() {
     socialOverviewData = data;
 
     if (data.error) {
-      container.innerHTML = `<div class="empty">⚠️ ${data.error}</div>`;
+      container.innerHTML = `<div class="empty">⚠️ ${escapeHtml(data.error)}</div>`;
       return;
     }
 
@@ -789,11 +803,11 @@ async function loadSocialOverview() {
         return `
           <div class="post-card">
             <div class="post-meta">
-              <span class="sender">${src} ${p.sender_name || 'Unknown'}</span>
+              <span class="sender">${src} ${escapeHtml(p.sender_name || 'Unknown')}</span>
               <span class="time">${timeAgo(p.started_at)} · ${(p.started_at || '').slice(0, 16).replace('T', ' ')}</span>
             </div>
-            <div class="post-headline">${p.headline || ''}</div>
-            <div class="post-summary${isLong ? ' collapsed' : ''}" id="${id}">${text}</div>
+            <div class="post-headline">${escapeHtml(p.headline || '')}</div>
+            <div class="post-summary${isLong ? ' collapsed' : ''}" id="${id}">${escapeHtml(text)}</div>
             ${isLong ? `<span class="post-expand" onclick="togglePost('${id}', this)">📖 Xem thêm</span>` : ''}
           </div>`;
       }).join('');
@@ -801,7 +815,7 @@ async function loadSocialOverview() {
 
     container.innerHTML = html || '<div class="empty">Chưa có dữ liệu social</div>';
   } catch (e) {
-    container.innerHTML = `<div class="empty">⚠️ Lỗi kết nối: ${e.message}</div>`;
+    container.innerHTML = `<div class="empty">⚠️ Lỗi kết nối: ${escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -818,7 +832,7 @@ async function loadSocialSearch() {
     const data = await r.json();
 
     if (data.error) {
-      container.innerHTML = `<div class="empty">⚠️ ${data.error}</div>`;
+      container.innerHTML = `<div class="empty">⚠️ ${escapeHtml(data.error)}</div>`;
       return;
     }
 
@@ -837,7 +851,7 @@ async function loadSocialSearch() {
     if (summary) {
       html += `
         <div class="ai-summary">
-          <div class="ai-summary-label">🤖 AI Phân tích · ${data.entity || socialSearchQuery}</div>
+          <div class="ai-summary-label">🤖 AI Phân tích · ${escapeHtml(data.entity || socialSearchQuery)}</div>
           <div class="ai-summary-body">${renderMarkdown(summary)}</div>
         </div>
         <div class="section-divider"><span>📋 Danh sách post gốc</span></div>`;
@@ -851,18 +865,18 @@ async function loadSocialSearch() {
       return `
         <div class="post-card">
           <div class="post-meta">
-            <span class="sender">${src} ${p.sender_name || 'Unknown'}</span>
+            <span class="sender">${src} ${escapeHtml(p.sender_name || 'Unknown')}</span>
             <span class="time">${timeAgo(p.started_at)} · ${(p.started_at || '').slice(0, 16).replace('T', ' ')}</span>
           </div>
-          <div class="post-headline">${p.headline || ''}</div>
-          <div class="post-summary${isLong ? ' collapsed' : ''}" id="${id}">${text}</div>
+          <div class="post-headline">${escapeHtml(p.headline || '')}</div>
+          <div class="post-summary${isLong ? ' collapsed' : ''}" id="${id}">${escapeHtml(text)}</div>
           ${isLong ? `<span class="post-expand" onclick="togglePost('${id}', this)">📖 Xem thêm</span>` : ''}
         </div>`;
     }).join('');
 
     container.innerHTML = html;
   } catch (e) {
-    container.innerHTML = `<div class="empty">⚠️ Lỗi kết nối: ${e.message}</div>`;
+    container.innerHTML = `<div class="empty">⚠️ Lỗi kết nối: ${escapeHtml(e.message)}</div>`;
   }
 }
 
