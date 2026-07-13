@@ -4,28 +4,55 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { askMozy } from './mozy-ask.mjs';
 import { safeFetch } from './mozyfin.mjs';
+import { getLatest } from './db.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
 
-export async function generateMarketReview() {
-  // Pull data for each watchlist ticker
+function rowsOf(node) {
+  return node?.data?.rows || node?.rows || [];
+}
+
+// db là optional: nếu truyền vào thì tái dùng data eod vừa fetch (không gọi API lại).
+export async function generateMarketReview(db = null) {
   const watchlist = config.tickers;
   const tickerData = {};
 
   for (const t of watchlist) {
     const sym = `${t}.VN`;
+
+    // Ưu tiên đọc từ DB (pipeline eod vừa lưu quote/ohlcv/news) để tránh gọi API trùng.
+    let quoteNode, ohlcvNode, newsNode;
+    if (db) {
+      quoteNode = getLatest(db, t, 'quote');
+      ohlcvNode = getLatest(db, t, 'ohlcv');
+      newsNode  = getLatest(db, t, 'news');
+    }
+
+    const hasDbData = quoteNode?.data && !quoteNode.data.error
+      && ohlcvNode?.data && !ohlcvNode.data.error;
+
     try {
-      const [q, ohlcv, news] = await Promise.all([
-        safeFetch(['quote', sym], { timeoutMs: 15000 }),
-        safeFetch(['ohlcv', sym, '--timeframe', '1d', '--limit', '10'], { timeoutMs: 15000 }),
-        safeFetch(['news', '--query', sym, '--limit', '5'], { timeoutMs: 15000 }),
-      ]);
-      tickerData[t] = {
-        quote: q?.rows?.[q.rows.length - 1] || q?.data?.rows?.[0] || {},
-        ohlcv: ohlcv?.rows || ohlcv?.data?.rows || [],
-        news: news?.rows || news?.data?.rows || [],
-      };
+      if (hasDbData) {
+        const qRows = rowsOf(quoteNode);
+        tickerData[t] = {
+          quote: qRows[qRows.length - 1] || qRows[0] || {},
+          ohlcv: rowsOf(ohlcvNode),
+          news: rowsOf(newsNode),
+        };
+      } else {
+        // Fallback: DB chưa có → fetch trực tiếp
+        const [q, ohlcv, news] = await Promise.all([
+          safeFetch(['quote', sym], { timeoutMs: 15000 }),
+          safeFetch(['ohlcv', sym, '--timeframe', '1d', '--limit', '10'], { timeoutMs: 15000 }),
+          safeFetch(['news', '--query', sym, '--limit', '5'], { timeoutMs: 15000 }),
+        ]);
+        tickerData[t] = {
+          quote: q?.rows?.[q.rows.length - 1] || q?.data?.rows?.[0] || {},
+          ohlcv: ohlcv?.rows || ohlcv?.data?.rows || [],
+          news: news?.rows || news?.data?.rows || [],
+        };
+      }
     } catch (_) {
       tickerData[t] = { error: 'fetch failed' };
     }
@@ -69,5 +96,14 @@ KHÔNG markdown. KHÔNG thêm text ngoài JSON. Chỉ JSON, không gì khác. Ti
   const clean = out.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/m, '').trim();
   const m = clean.match(/\{[\s\S]*\}\s*$/);
   if (!m) throw new Error('Mozy did not return JSON for watchlist review');
-  return JSON.parse(m[0]);
+  let parsed;
+  try {
+    parsed = JSON.parse(m[0]);
+  } catch (e) {
+    throw new Error('review JSON không parse được: ' + e.message);
+  }
+  if (!parsed.headline && !Array.isArray(parsed.watchlist)) {
+    throw new Error('review JSON thiếu headline/watchlist');
+  }
+  return parsed;
 }
