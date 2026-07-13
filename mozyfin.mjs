@@ -49,12 +49,10 @@ function autoCast(v) {
   if (v === '' || v === '—' || v === '-' || v === 'N/A') return null;
   // ISO date
   if (/^\d{4}-\d{2}-\d{2}T/.test(v)) return v;
-  // Pure number (with optional %)
-  const isPct = v.endsWith('%');
+  // Pure number (bỏ dấu phẩy phân cách và ký hiệu %) → trả về số
   const stripped = v.replace(/[, ]/g, '').replace(/%$/, '');
   if (/^-?\d+(\.\d+)?$/.test(stripped)) {
-    const n = Number(stripped);
-    return isPct ? n : n;
+    return Number(stripped);
   }
   return v;
 }
