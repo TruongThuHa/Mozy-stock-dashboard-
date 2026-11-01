@@ -114,14 +114,5 @@ mozy-stock-dashboard/
 ```
 
 ## License
-## My changes / Thay đổi của tôi
 
-- **Security** — `public/index.html`: added `escapeHtml()` at 67 places so external data (news, social posts, AI output) can't inject HTML/JS (XSS).
-- **Security** — `server.mjs`, `config.example.json`: default host `127.0.0.1` instead of `0.0.0.0` (the dashboard has no login), with a warning if bound elsewhere.
-- **Reliability** — `server.mjs`: config hot-reload uses `fs.watchFile` instead of `fs.watch` (more reliable on Linux/WSL).
-- **Reliability** — `server.mjs`: the watchlist auto-refresh shares one concurrency guard with `/api/refresh` (retries after 5s if busy), so two pipelines can't run at once.
-- **Correctness** — `analyzer.mjs`: `validateDashboard()` checks required fields and clamps `sentiment_score` to 0–100 before saving AI output.
-- **Correctness** — `market-review.mjs`, `pipeline.mjs`: market review reads data already saved by the pipeline, calling the API only if missing.
-- **Correctness** — `technicals.mjs`: EMA seeded with an SMA; MACD is null-safe.
-- **Cleanup** — `mozyfin.mjs`: removed a dead `isPct ? n : n` branch.
 MIT
